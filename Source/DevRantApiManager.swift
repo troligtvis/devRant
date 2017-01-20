@@ -68,6 +68,11 @@ final class DevRantApiManager {
         }).resume()
     }
     
+    /// Retrieve a single rant from devRant. Use this method to retrieve a rant with its full text and comments.
+    ///
+    /// - Parameters:
+    ///   - id: Int?
+    ///   - completion: (Rant?) -> ()
     func getRant(_ id: Int?, completion: @escaping (Rant?) -> Void) {
         guard let id = id else {
             print("Could not find id")
@@ -102,6 +107,14 @@ final class DevRantApiManager {
         }).resume()
     }
     
+    /// By providing a RantOption as an argument, it's possible to sort by 'algo', 'recent' and 'top' rants. As well as limiting and skipping the amount of rants to be fetched. Otherwise the default values will be used
+    ///
+    /// Default values:
+    /// sort: 'algo', limit: 50, skip: 0
+    ///
+    /// - Parameters:
+    ///   - options: (Optional) RantOption
+    ///   - completion: ([Rant]?) -> ()
     func getRants(_ options: RantOption = RantOption(), completion: @escaping ([Rant]?) -> Void) {
         let path = "?app=\(appId)" + options.getPath()
         let url = "/devrant/rants" + path
@@ -131,15 +144,34 @@ final class DevRantApiManager {
         }).resume()
     }
     
-    func search(for term: String) {
+    
+    /// Retrieve rants from devRant that match a specific search term.
+    ///
+    /// - Parameters:
+    ///   - term: String search term
+    ///   - completion: ([Rant]?) -> ()
+    func search(for term: String, completion: ([Rant]?) -> Void) {
         let path = "?app=\(appId)&term=\(term)"
+        let url = "/devrant/search" + path
         
+        let request = getRequest(for: url, with: .get)
+        defaultSession.dataTask(with: request, completionHandler: {
+            data, response, error in
+            
+            if let error = error {
+                print(#function, error.localizedDescription)
+                return
+            }
+            
+            
+        })
     }
     
-    
     /// Retrieve the profile of a devRant user by username.
-    /// - parameter username: devRant username
     ///
+    /// - Parameters:
+    ///   - username: String devRant username
+    ///   - completion: (Profile?) -> ()
     func getProfile(for username: String, completion: @escaping (Profile?) -> Void){
         getId(from: username, completion: {
             userId in
