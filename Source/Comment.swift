@@ -20,7 +20,7 @@ final class Comment {
     let userId: Int?
     let userScore: Int?
     let userName: String?
-    let voteState: Bool?
+    let voteState: Int?
     
     init(json: JSON){
         self.id = json["id"] as? Int
@@ -39,6 +39,6 @@ final class Comment {
         self.userId = json["user_id"] as? Int
         self.userScore = json["user_score"] as? Int
         self.userName = json["user_username"] as? String
-        self.voteState = json["vote_state"] as? Bool
+        self.voteState = json["vote_state"] as? Int
     }
 }
