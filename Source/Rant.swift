@@ -18,7 +18,7 @@ final class Rant {
     let attachedImage: RantImage?
     let numberOfComments: Int?
     let tags: [String]?
-    let voteState: Bool?
+    let voteState: Int?
     let userId: Int?
     let userName: String?
     let userScore: Int?
@@ -42,7 +42,7 @@ final class Rant {
         self.numberOfComments = json["num_comments"] as? Int
         
         self.tags = nil
-        self.voteState = json["vote_state"] as? Bool
+        self.voteState = json["vote_state"] as? Int
         self.userId = json["user_id"] as? Int
         self.userName = json["user_username"] as? String
         self.userScore = json["user_score"] as? Int
