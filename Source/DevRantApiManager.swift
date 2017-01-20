@@ -14,58 +14,45 @@ final class DevRantApiManager {
     fileprivate let defaultSession = URLSession(configuration: URLSessionConfiguration.default)
     fileprivate var dataTask: URLSessionDataTask?
     
-    fileprivate let root = "https://www.devrant.io/api"
-    fileprivate let appId = "3"
     
-    
-    enum HTTPMethod: String {
-        case get = "GET"
-        case post = "POST"
-    }
-    
-    fileprivate func getRequest(for url: String, with method: HTTPMethod, andBody body: [String: String]? = nil) -> URLRequest {
-        var request = URLRequest(url: URL(string: root + url)!)
-        request.httpMethod = method.rawValue
-        
-        if let body = body {
-            let jsonData = try! JSONSerialization.data(withJSONObject: body, options: .prettyPrinted)
-            request.httpBody = jsonData
-        }
-        
-        return request
-    }
-    
-
-    
-    func getId(from username: String, completion: @escaping (Int?) -> Void) {
-        let path = "?app=\(appId)&username=\(username)"
-        let url = "/get-user-id" + path
-        
-        let request = getRequest(for: url, with: .get)
+    fileprivate func task(with request: URLRequest, completion: @escaping (JSON?) -> Void) {
         defaultSession.dataTask(with: request, completionHandler: {
             data, response, error in
             
             if let error = error {
-                print(#function, error.localizedDescription)
+                print(error.localizedDescription)
                 completion(nil)
                 return
             }
+            
             guard let json = JSONHelper.getJSON(from: data) else {
                 print("no json")
                 completion(nil)
                 return
             }
             
-            print(json)
+            completion(json)
+        }).resume()
+    }
+
+    
+    func getId(from username: String, completion: @escaping (Int?) -> Void) {
+        task(with: Router.getId(for: username).asURLRequest(), completion: {
+            json in
+            
+            guard let json = json else {
+                completion(nil)
+                return
+            }
+            
             guard let userId = json["user_id"] as? Int else {
                 print("did not find user id")
                 completion(nil)
                 return
             }
             
-            print(userId)
             completion(userId)
-        }).resume()
+        })
     }
     
     /// Retrieve a single rant from devRant. Use this method to retrieve a rant with its full text and comments.
@@ -80,21 +67,10 @@ final class DevRantApiManager {
             return
         }
         
-        let path = "/\(id)?app=\(appId)"
-        let url = "/devrant/rants" + path
-        
-        let request = getRequest(for: url, with: .get)
-        defaultSession.dataTask(with: request, completionHandler: {
-            data, response, error in
+        task(with: Router.getRant(with: id).asURLRequest(), completion: {
+            json in
             
-            if let error = error {
-                print(#function, error.localizedDescription)
-                completion(nil)
-                return
-            }
-            
-            guard let json = JSONHelper.getJSON(from: data) else {
-                print("no json")
+            guard let json = json else {
                 completion(nil)
                 return
             }
@@ -104,7 +80,7 @@ final class DevRantApiManager {
             
             rant.comments = comments
             completion(rant)
-        }).resume()
+        })
     }
     
     /// By providing a RantOption as an argument, it's possible to sort by 'algo', 'recent' and 'top' rants. As well as limiting and skipping the amount of rants to be fetched. Otherwise the default values will be used
@@ -116,20 +92,10 @@ final class DevRantApiManager {
     ///   - options: (Optional) RantOption
     ///   - completion: ([Rant]?) -> ()
     func getRants(_ options: RantOption = RantOption(), completion: @escaping ([Rant]?) -> Void) {
-        let path = "?app=\(appId)" + options.getPath()
-        let url = "/devrant/rants" + path
-        let request = getRequest(for: url, with: .get)
-        defaultSession.dataTask(with: request, completionHandler: {
-            data, response, error in
+        task(with: Router.getRants(options: options).asURLRequest(), completion: {
+            json in
             
-            if let error = error {
-                print(#function, error.localizedDescription)
-                completion(nil)
-                return
-            }
-            
-            guard let json = JSONHelper.getJSON(from: data) else {
-                print("no json")
+            guard let json = json else {
                 completion(nil)
                 return
             }
@@ -141,7 +107,7 @@ final class DevRantApiManager {
             
             let rants: [Rant] = rantsJSON.flatMap({ Rant(json: $0) })
             completion(rants)
-        }).resume()
+        })
     }
     
     
@@ -150,20 +116,22 @@ final class DevRantApiManager {
     /// - Parameters:
     ///   - term: String search term
     ///   - completion: ([Rant]?) -> ()
-    func search(for term: String, completion: ([Rant]?) -> Void) {
-        let path = "?app=\(appId)&term=\(term)"
-        let url = "/devrant/search" + path
-        
-        let request = getRequest(for: url, with: .get)
-        defaultSession.dataTask(with: request, completionHandler: {
-            data, response, error in
+    func search(for term: String, completion: @escaping ([Rant]?) -> Void) {
+        task(with: Router.search(for: term).asURLRequest(), completion: {
+            json in
             
-            if let error = error {
-                print(#function, error.localizedDescription)
+            guard let json = json else {
+                completion(nil)
                 return
             }
             
+            guard let rantsJSON = json["rants"] as? [JSON] else {
+                completion(nil)
+                return
+            }
             
+            let rants: [Rant] = rantsJSON.flatMap({ Rant(json: $0) })
+            completion(rants)
         })
     }
     
@@ -182,20 +150,10 @@ final class DevRantApiManager {
                 return
             }
             
-            let path = "?app=\(self.appId)"
-            let url = "/users/\(userId)" + path
-            let request = self.getRequest(for: url, with: .get)
-            self.defaultSession.dataTask(with: request, completionHandler: {
-                data, response, error in
+            self.task(with: Router.getProfile(with: userId).asURLRequest(), completion: {
+                json in
                 
-                if let error = error {
-                    print(#function, error.localizedDescription)
-                    completion(nil)
-                    return
-                }
-                
-                guard let json = JSONHelper.getJSON(from: data) else {
-                    print("no json")
+                guard let json = json else {
                     completion(nil)
                     return
                 }
@@ -209,7 +167,7 @@ final class DevRantApiManager {
                 
                 let content = profileJSON["content"] as! JSON
                 let innerContent = content["content"] as! JSON
-
+                
                 profile.comments = (innerContent["comments"] as! [JSON]).flatMap({ Comment(json: $0) })
                 profile.favorites = (innerContent["favorites"] as! [JSON]).flatMap({ Rant(json: $0) })
                 profile.rants = (innerContent["rants"] as! [JSON]).flatMap({ Rant(json: $0) })
@@ -222,7 +180,7 @@ final class DevRantApiManager {
                 profile.upvotedCount = counts["upvoted"] as! Int
                 
                 completion(profile)
-            }).resume()
+            })
         })
     }
 }
